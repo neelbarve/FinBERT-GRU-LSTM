@@ -1,0 +1,15 @@
+requests
+datasets
+torch
+transformers
+rapidfuzz
+spacy
+pyyaml
+uvicorn
+fastapi
+pydantic
+gunicorn
+pandas
+numpy
+scikit-learn
+python-dotenv

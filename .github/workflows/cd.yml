@@ -1,0 +1,61 @@
+name: CD Pipeline
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  docker-build-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build Docker image
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/finbert-pipeline:latest -f deployment/Dockerfile .
+
+      - name: Tag version
+        run: |
+            VERSION=$(date +'%Y.%m.%d.%H%M')
+            docker tag ${{ secrets.DOCKERHUB_USERNAME }}/finbert-pipeline:latest \
+                ${{ secrets.DOCKERHUB_USERNAME }}/finbert-pipeline:$VERSION
+  
+
+      - name: Push Docker image
+        run: |
+            docker push ${{ secrets.DOCKERHUB_USERNAME }}/finbert-pipeline:latest
+            docker push ${{ secrets.DOCKERHUB_USERNAME }}/finbert-pipeline:$VERSION
+
+
+  deploy:
+    needs: docker-build-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: SSH into server and deploy
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/finbert-pipeline:latest
+            docker stop finbert || true
+            docker rm finbert || true
+            docker run -d -p 8000:8000 --name finbert \
+              --env-file /home/${{ secrets.SERVER_USER }}/finbert/prod.env \
+              ${{ secrets.DOCKERHUB_USERNAME }}/finbert-pipeline:latest
+
+      - name: Health check
+        run: |
+            sleep 10
+            curl -f http://${{ secrets.SERVER_HOST }}:8000/monitor/health
+

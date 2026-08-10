@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+gunicorn
+apscheduler
+pydantic
+torch
+numpy

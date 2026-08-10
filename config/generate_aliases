@@ -1,0 +1,18 @@
+import yfinance as yf
+import csv
+
+def generate_aliases(tickers, out_path="ticker_aliases.csv"):
+    rows = []
+    for t in tickers:
+        info = yf.Ticker(t).info
+        name = info.get("longName") or info.get("shortName") or ""
+        rows.append([t, name])
+
+    with open(out_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["ticker", "company_name"])
+        writer.writerows(rows)
+
+if __name__ == "__main__":
+    sample = ["AAPL", "MSFT", "GOOGL", "AMZN"]
+    generate_aliases(sample)
